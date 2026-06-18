@@ -25,9 +25,20 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser):
+
+    class Role(models.TextChoices):
+        ADMIN = "admin", "Admin"
+        MAID = "maid", "Maid"
+        CUSTOMER = "customer", "Customer"
+
     fname = models.CharField(verbose_name="First Name", max_length=30)
     lname = models.CharField(verbose_name="Last Name", max_length=30)
-    role = models.TextChoices()
+    role = models.CharField(
+        verbose_name="Role",
+        max_length=20,
+        choices=Role.choices,
+        default=Role.CUSTOMER,
+    )
     email = models.EmailField(verbose_name="Email Address", max_length=255, unique=True, blank=True, null=True, db_index=True)
     mobile = models.CharField(verbose_name="Mobile Number", max_length=15, unique=True, blank=True, null=True, db_index=True)
     username = models.CharField(verbose_name="Username", max_length=15, unique=True, db_index=True)
