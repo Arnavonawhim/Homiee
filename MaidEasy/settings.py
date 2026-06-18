@@ -56,7 +56,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'MaidEasy.wsgi.application'
 
-# ✅ Use PostgreSQL on Render, fallback to SQLite locally
 DATABASES = {
     'default': dj_database_url.config(
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
@@ -76,7 +75,7 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# ✅ Static files — all three required
+
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
