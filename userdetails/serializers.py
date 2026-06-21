@@ -1,13 +1,22 @@
 # profiles/serializers.py
 from rest_framework import serializers
-from userdetails.models import Service
-from userdetails.serializers import ServiceSerializer,LanguageSerializer
-from .models import ResidentProfile,HelperProfile,Language
+from .models import Service, Language, ResidentProfile, HelperProfile
+
+class ServiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Service
+        fields = ["id", "name", "slug"]
+
+
+class LanguageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Language
+        fields = ["id", "name", "code"]
 
 class ResidentAddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = ResidentProfile
-        fields = ["house_no", "area", "city", "pincode", "latitude", "longitude"]
+        fields = ["house_no", "area", "city", "pincode",]
 
 
 class ResidentServicesNeededSerializer(serializers.ModelSerializer):
@@ -46,7 +55,7 @@ class ResidentProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = ResidentProfile
         fields = [
-            "house_no", "area", "city", "pincode", "latitude", "longitude",
+            "house_no", "area", "city", "pincode",
             "services_needed", "service_ids",
             "work_type", "preferred_time_slots", "days_required",
             "emergency_contact_name", "emergency_contact_mobile",
