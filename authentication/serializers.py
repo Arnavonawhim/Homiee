@@ -38,21 +38,18 @@ def validate_mobile_format(value: str) -> str:
         raise serializers.ValidationError("Mobile number must be exactly 10 digits.")
     return value
 
-
 class UserRegistrationSerializer(serializers.Serializer):
     fname = serializers.CharField(required=True, max_length=30)
     lname = serializers.CharField(required=True, max_length=30)
-    email = serializers.EmailField(required=False, allow_blank=True)
+    email = serializers.EmailField(required=True)
     mobile = serializers.CharField(required=False, allow_blank=True, max_length=15)
-    username = serializers.CharField(required=True)
-    role = serializers.ChoiceField(choices=User.Role.choices, allow_blank=True)
+    username = serializers.CharField(required=False, allow_blank=True)
+    role = serializers.ChoiceField(choices=User.Role.choices, required=False, allow_blank=True)
     password = serializers.CharField(write_only=True, required=True, style={"input_type": "password"})
     password2 = serializers.CharField(write_only=True, required=True, style={"input_type": "password"},
                                        help_text="Must match password.")
     def validate_email(self, value: str) -> str:
-        if value:
-            return value.strip().lower()
-        return value
+        return value.strip().lower()
 
     def validate_mobile(self, value: str) -> str:
         if value:
@@ -60,7 +57,16 @@ class UserRegistrationSerializer(serializers.Serializer):
         return value
 
     def validate_username(self, value: str) -> str:
-        return validate_username_format(value)
+        if value:
+            return validate_username_format(value)
+        return value
+
+    def validate_role(self, value: str) -> str:
+        if not value:
+            return User.Role.RESIDENT
+        if value not in (User.Role.RESIDENT, User.Role.HELPER):
+            raise serializers.ValidationError("Role must be either resident or helper.")
+        return value
 
     def validate_password(self, value: str) -> str:
         return validate_strong_password(value)
@@ -68,13 +74,6 @@ class UserRegistrationSerializer(serializers.Serializer):
     def validate(self, data: dict) -> dict:
         if data.get("password") != data.get("password2"):
             raise serializers.ValidationError({"password2": "Passwords do not match."})
-        email = data.get("email", "").strip()
-        mobile = data.get("mobile", "").strip()
-        if not email and not mobile:
-            raise serializers.ValidationError({
-                "email": "At least one of email or mobile is required.",
-                "mobile": "At least one of email or mobile is required.",
-            })
         return data
 
 class VerifyOTPSerializer(serializers.Serializer):
@@ -133,3 +132,8 @@ class ConfirmPasswordSerializer(serializers.Serializer):
 
 class GoogleAuthSerializer(serializers.Serializer):
     id_token = serializers.CharField(required=True)
+
+class FindAccountSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    def validate_email(self, value: str) -> str:
+        return value.strip().lower()

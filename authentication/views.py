@@ -55,11 +55,6 @@ def _user_data(user) -> dict:
         "username": user.username,
     }
 
-def _determine_otp_channel(email: str, mobile: str) -> tuple[str, str]:
-    if email:
-        return "email", email
-    return "mobile", mobile
-
 def _send_otp(channel: str, target: str, otp_code: str, purpose: str):
     if channel == "email":
         tasks.send_otp_email(target, otp_code, purpose)
@@ -141,8 +136,8 @@ class UserRegistrationView(APIView):
         lname = serializer.validated_data["lname"]
         email = serializer.validated_data.get("email", "").strip()
         mobile = serializer.validated_data.get("mobile", "").strip()
-        username = serializer.validated_data["username"]
-        role = serializer.validated_data["role"]
+        username = serializer.validated_data.get("username", "").strip()
+        role = serializer.validated_data.get("role") or User.Role.RESIDENT
         password = serializer.validated_data["password"]
         if email and User.objects.filter(email=email, is_email_verified=True).exists():
             return Response(
@@ -150,19 +145,22 @@ class UserRegistrationView(APIView):
                  "errors": {"email": ["This email is already registered."]}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if mobile and User.objects.filter(mobile=mobile, is_mobile_verified=True).exists():
+        if mobile and User.objects.filter(mobile=mobile).exists():
             return Response(
                 {"status": "error", "message": "An account with this mobile number already exists.",
                  "errors": {"mobile": ["This mobile number is already registered."]}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if User.objects.filter(username=username).exists():
+        if username and User.objects.filter(username=username).exists():
             return Response(
                 {"status": "error", "message": "This username is already taken.",
                  "errors": {"username": ["This username is already taken."]}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        channel, identifier = _determine_otp_channel(email, mobile)
+        if not username:
+            username = _generate_username_from_email(email)
+        channel = "email"
+        identifier = email
         eligible, err_msg = otp_service.check_resend_eligibility(identifier)
         if not eligible:
             return Response(
@@ -257,7 +255,7 @@ class VerifyRegistrationOTPView(APIView):
                  "errors": {"email": ["This email is already registered."]}},
                 status=status.HTTP_409_CONFLICT,
             )
-        if mobile and User.objects.filter(mobile=mobile, is_mobile_verified=True).exists():
+        if mobile and User.objects.filter(mobile=mobile).exists():
             otp_service.clear_all_otp_keys(identifier)
             return Response(
                 {"status": "error", "message": "An account with this mobile already exists.",
@@ -278,6 +276,7 @@ class VerifyRegistrationOTPView(APIView):
             lname=pending["lname"],
             email=email or None,
             mobile=mobile or None,
+            role=pending.get("role") or User.Role.RESIDENT,
         )
         if channel == "email":
             user.is_email_verified = True
@@ -348,6 +347,46 @@ class ResendOTPView(APIView):
         return Response(
             {"status": "success", "message": f"A new OTP has been sent to your {channel}.",
              "data": {"identifier": identifier, "otp_expires_in": f"{settings.OTP_EXPIRY_MINUTES} minutes"}},
+            status=status.HTTP_200_OK,
+        )
+
+class FindAccountView(APIView):
+    @extend_schema(
+        request=serializers.FindAccountSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=OpenApiTypes.OBJECT,
+                description="Account existence checked",
+                examples=[
+                    OpenApiExample(
+                        "Exists",
+                        value={"status": "success", "message": "Account lookup completed.",
+                               "data": {"email": "user@example.com", "exists": True}},
+                    ),
+                    OpenApiExample(
+                        "Not Found",
+                        value={"status": "success", "message": "Account lookup completed.",
+                               "data": {"email": "xyz@gmail.com", "exists": False}},
+                    ),
+                ],
+            ),
+            400: _ERROR_400,
+        },
+        tags=["Authentication"],
+        summary="Find your account",
+        description="Checks whether an account exists for the given email. Returns a boolean `exists` flag.",
+    )
+    def post(self, request):
+        serializer = serializers.FindAccountSerializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except DRFValidationError:
+            raise
+        email = serializer.validated_data["email"]
+        exists = User.objects.filter(email=email).exists()
+        return Response(
+            {"status": "success", "message": "Account lookup completed.",
+             "data": {"email": email, "exists": exists}},
             status=status.HTTP_200_OK,
         )
 
@@ -514,16 +553,18 @@ class PasswordResetRequestView(APIView):
                 {"status": "error", "message": err_msg},
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
-        if "@" in identifier:
-            channel = "email"
-        else:
-            channel = "mobile"
+        if not user.email:
+            return Response(
+                {"status": "error", "message": "No email is associated with this account.",
+                 "errors": {"identifier": ["No email on file for password reset."]}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         otp_code = otp_service.generate_and_store_otp(identifier, "password_reset")
-        _send_otp(channel, identifier, otp_code, "password_reset")
-        logger.info("Password reset requested for %s via %s", identifier, channel)
+        _send_otp("email", user.email, otp_code, "password_reset")
+        logger.info("Password reset requested for %s via email", identifier)
         return Response(
             {"status": "success",
-             "message": f"OTP sent to your {channel}. Please verify to reset your password.",
+             "message": "OTP sent to your email. Please verify to reset your password.",
              "data": {"identifier": identifier, "otp_expires_in": f"{settings.OTP_EXPIRY_MINUTES} minutes"}},
             status=status.HTTP_200_OK,
         )
