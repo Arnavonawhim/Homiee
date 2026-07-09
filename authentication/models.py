@@ -30,6 +30,8 @@ class User(AbstractBaseUser):
         ADMIN = "admin", "Admin"
         HELPER = "helper", "Helper"
         RESIDENT = "resident", "Resident"
+        BOTH = "both","Both"
+
 
     fname = models.CharField(verbose_name="First Name", max_length=30)
     lname = models.CharField(verbose_name="Last Name", max_length=30)

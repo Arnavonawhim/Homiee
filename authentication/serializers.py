@@ -45,7 +45,7 @@ class UserRegistrationSerializer(serializers.Serializer):
     email = serializers.EmailField(required=False, allow_blank=True)
     mobile = serializers.CharField(required=False, allow_blank=True, max_length=15)
     username = serializers.CharField(required=True)
-    role = serializers.ChoiceField(choices=User.Role.choices, required=True)
+    role = serializers.ChoiceField(choices=User.Role.choices, allow_blank=True)
     password = serializers.CharField(write_only=True, required=True, style={"input_type": "password"})
     password2 = serializers.CharField(write_only=True, required=True, style={"input_type": "password"},
                                        help_text="Must match password.")

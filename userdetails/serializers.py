@@ -1,12 +1,10 @@
-# profiles/serializers.py
 from rest_framework import serializers
-from .models import Service, Language, ResidentProfile, HelperProfile
+from .models import Service, Language, ResidentProfile, HelperProfile, HelperServicePrice
 
 class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
         fields = ["id", "name", "slug"]
-
 
 class LanguageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -16,94 +14,104 @@ class LanguageSerializer(serializers.ModelSerializer):
 class ResidentAddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = ResidentProfile
-        fields = ["house_no", "area", "city", "pincode",]
+        fields = ["house_no", "area", "city", "pincode", "latitude", "longitude"]
 
-
-class ResidentServicesNeededSerializer(serializers.ModelSerializer):
-    services_needed = serializers.PrimaryKeyRelatedField(many=True, queryset=Service.objects.all())
-
-    class Meta:
-        model = ResidentProfile
-        fields = ["services_needed"]
-
-
-class ResidentScheduleSerializer(serializers.ModelSerializer):
-    preferred_time_slots = serializers.ListField(
-        child=serializers.ChoiceField(choices=ResidentProfile.TimeSlot.choices)
-    )
-    days_required = serializers.ListField(
-        child=serializers.ChoiceField(choices=ResidentProfile.Day.choices)
-    )
-
-    class Meta:
-        model = ResidentProfile
-        fields = ["work_type", "preferred_time_slots", "days_required"]
-
-
-class ResidentSafetySerializer(serializers.ModelSerializer):
+class ResidentEmergencyContactSerializer(serializers.ModelSerializer):
     class Meta:
         model = ResidentProfile
         fields = ["emergency_contact_name", "emergency_contact_mobile"]
 
+class ResidentPhotoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ResidentProfile
+        fields = ["profile_photo"]
 
 class ResidentProfileSerializer(serializers.ModelSerializer):
-    services_needed = ServiceSerializer(many=True, read_only=True)
-    service_ids = serializers.PrimaryKeyRelatedField(
-        many=True, write_only=True, source="services_needed", queryset=Service.objects.all()
-    )
-
     class Meta:
         model = ResidentProfile
         fields = [
-            "house_no", "area", "city", "pincode",
-            "services_needed", "service_ids",
-            "work_type", "preferred_time_slots", "days_required",
+            "house_no", "area", "city", "pincode", "latitude", "longitude",
             "emergency_contact_name", "emergency_contact_mobile",
+            "profile_photo",
         ]
 
-class HelperServicesOfferedSerializer(serializers.ModelSerializer):
-    services_offered = serializers.PrimaryKeyRelatedField(many=True, queryset=Service.objects.all())
+class HelperIdentitySerializer(serializers.ModelSerializer):
+    pan_card = serializers.FileField(required=False, allow_null=True)
 
     class Meta:
         model = HelperProfile
-        fields = ["services_offered"]
+        fields = [
+            "full_name", "date_of_birth", "govt_id_type", "govt_id_number",
+            "aadhaar_card", "pan_card",
+        ]
 
+class HelperAddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HelperProfile
+        fields = ["house_no", "area", "city", "pincode", "latitude", "longitude"]
 
+class HelperDocumentsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HelperProfile
+        fields = ["profile_photo", "police_verification_cert", "address_proof"]
 
+class HelperServicePriceSerializer(serializers.ModelSerializer):
+    service = serializers.PrimaryKeyRelatedField(queryset=Service.objects.all())
+    class Meta:
+        model = HelperServicePrice
+        fields = ["service", "price_per_hour"]
+class HelperServicePriceReadSerializer(serializers.ModelSerializer):
+    service = ServiceSerializer(read_only=True)
+    class Meta:
+        model = HelperServicePrice
+        fields = ["service", "price_per_hour"]
+
+class HelperServicesPricingSerializer(serializers.ModelSerializer):
+    service_prices = HelperServicePriceSerializer(many=True)
+    class Meta:
+        model = HelperProfile
+        fields = ["service_prices"]
+    def update(self, instance, validated_data):
+        service_prices = validated_data.pop("service_prices", None)
+        if service_prices is not None:
+            instance.service_prices.all().delete()
+            for item in service_prices:
+                HelperServicePrice.objects.create(
+                    helper=instance,
+                    service=item["service"],
+                    price_per_hour=item["price_per_hour"],
+                )
+        return instance
 class HelperExperienceSerializer(serializers.ModelSerializer):
     languages_spoken = serializers.PrimaryKeyRelatedField(many=True, queryset=Language.objects.all())
-
     class Meta:
         model = HelperProfile
-        fields = ["years_of_experience", "previous_work_reference", "languages_spoken"]
-
-
-
+        fields = ["years_of_experience", "languages_spoken", "about"]
 class HelperAvailabilitySerializer(serializers.ModelSerializer):
+    working_days = serializers.ListField(
+        child=serializers.ChoiceField(choices=HelperProfile.Day.choices)
+    )
     class Meta:
         model = HelperProfile
-        fields = [
-            "work_preference", "working_hours", "areas_willing_to_work_in",
-            "emergency_contact_name", "emergency_contact_mobile",
-        ]
-
+        fields = ["working_days", "start_time", "end_time"]
+class HelperEmergencyContactSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HelperProfile
+        fields = ["emergency_contact_name", "emergency_contact_relation", "emergency_contact_mobile"]
 
 class HelperProfileSerializer(serializers.ModelSerializer):
-    services_offered = ServiceSerializer(many=True, read_only=True)
-    service_ids = serializers.PrimaryKeyRelatedField(
-        many=True, write_only=True, source="services_offered", queryset=Service.objects.all()
-    )
+    service_prices = HelperServicePriceReadSerializer(many=True, read_only=True)
     languages_spoken = LanguageSerializer(many=True, read_only=True)
-    language_ids = serializers.PrimaryKeyRelatedField(
-        many=True, write_only=True, source="languages_spoken", queryset=Language.objects.all()
-    )
 
     class Meta:
         model = HelperProfile
         fields = [
-            "services_offered", "service_ids",
-            "years_of_experience", "previous_work_reference",
-            "languages_spoken", "language_ids",
-            "work_preference", "working_hours", "areas_willing_to_work_in",
-            "emergency_contact_name", "emergency_contact_mobile",
+            "full_name", "date_of_birth", "govt_id_type", "govt_id_number",
+            "aadhaar_card", "pan_card",
+            "house_no", "area", "city", "pincode", "latitude", "longitude",
+            "profile_photo", "police_verification_cert", "address_proof",
+            "service_prices",
+            "years_of_experience", "languages_spoken", "about",
+            "working_days", "start_time", "end_time",
+            "emergency_contact_name", "emergency_contact_relation", "emergency_contact_mobile",
         ]
