@@ -30,6 +30,7 @@ class ResidentProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = ResidentProfile
         fields = [
+            "email","fname",
             "house_no", "area", "city", "pincode", "latitude", "longitude",
             "emergency_contact_name", "emergency_contact_mobile",
             "profile_photo",
@@ -106,7 +107,7 @@ class HelperProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = HelperProfile
         fields = [
-            "full_name", "date_of_birth", "govt_id_type", "govt_id_number",
+            "full_name","email", "date_of_birth", "govt_id_type", "govt_id_number",
             "aadhaar_card", "pan_card",
             "house_no", "area", "city", "pincode", "latitude", "longitude",
             "profile_photo", "police_verification_cert", "address_proof",
