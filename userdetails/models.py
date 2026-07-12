@@ -51,6 +51,8 @@ class HelperProfile(models.Model):
     govt_id_type = models.CharField(max_length=20, choices=GovtIdType.choices, blank=True)
     govt_id_number = models.CharField(max_length=50, blank=True)
     aadhaar_card = models.FileField(upload_to="helper_docs/aadhaar/%Y/%m/", null=True, blank=True)
+    adhaar_verified = models.BooleanField(default=False)
+    pan_verified = models.BooleanField(default=False)
     pan_card = models.FileField(upload_to="helper_docs/pan/%Y/%m/", null=True, blank=True)
     house_no = models.CharField(max_length=100)
     area = models.CharField(max_length=100)
@@ -68,10 +70,12 @@ class HelperProfile(models.Model):
     working_days = models.JSONField(default=list)
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
-    emergency_contact_name = models.CharField(max_length=100)
+    emergency_contact_name = models.CharField(max_length=100, blank=True)
     emergency_contact_relation = models.CharField(max_length=50, blank=True)
-    emergency_contact_mobile = models.CharField(max_length=15)
+    emergency_contact_mobile = models.CharField(max_length=15, blank=True)
     emergency_contact_verified = models.BooleanField(default=False)
+    avg_rating = models.FloatField(default=0,max_length=2,blank=True) 
+    rating_count = models.IntegerField(default=0,blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
 class HelperServicePrice(models.Model):

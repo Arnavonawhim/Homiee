@@ -297,6 +297,8 @@ class HelperProfileStepMixin:
                             "govt_id_number": "1234 5678 9012",
                             "aadhaar_card": "/media/helper_docs/aadhaar/2026/07/aadhaar.jpg",
                             "pan_card": "/media/helper_docs/pan/2026/07/pan.jpg",
+                            "adhaar_verified": "false",
+                            "pan_verified":"false",
                         },
                     )
                 ],

@@ -76,7 +76,7 @@ class HelperIdentitySerializer(serializers.ModelSerializer):
         model = HelperProfile
         fields = [
             "full_name", "date_of_birth", "govt_id_type", "govt_id_number",
-            "aadhaar_card", "pan_card",
+            "aadhaar_card", "pan_card","adhaar_verified","pan_verified"
         ]
 
 class HelperAddressSerializer(serializers.ModelSerializer):

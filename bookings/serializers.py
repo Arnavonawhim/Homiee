@@ -32,6 +32,10 @@ class HelperCardSerializer(serializers.ModelSerializer):
             "avg_rating", "rating_count", "services", "distance_km",
         ]
 
+    def validate(self, data):
+        if data["avg_rating"]>5 or data["avg_rating"]<0:
+            raise serializers.ValidationError({"avg_rating": "Rating must be between 0 and 5."})
+
     def get_distance_km(self, obj):
         distances = self.context.get("distances", {})
         value = distances.get(obj.id)
