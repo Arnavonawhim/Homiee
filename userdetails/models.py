@@ -4,15 +4,17 @@ from django.db import models
 class Service(models.Model):
     name = models.CharField(max_length=50, unique=True)
     slug = models.SlugField(unique=True)
-def __str__(self):
+
+    def __str__(self):
         return self.name
 
 class Language(models.Model):
     name = models.CharField(max_length=50, unique=True)
     code = models.CharField(max_length=10, unique=True)
+
     def __str__(self):
         return self.name
-    
+
 class ResidentProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="resident_profile")
     house_no = models.CharField(max_length=100)
@@ -23,9 +25,10 @@ class ResidentProfile(models.Model):
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     emergency_contact_name = models.CharField(max_length=100)
     emergency_contact_mobile = models.CharField(max_length=15)
+    emergency_contact_verified = models.BooleanField(default=False)
     profile_photo = models.ImageField(upload_to="resident_photos/%Y/%m/", null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
 class HelperProfile(models.Model):
     class GovtIdType(models.TextChoices):
         AADHAAR = "aadhaar", "Aadhaar Card"
@@ -68,11 +71,13 @@ class HelperProfile(models.Model):
     emergency_contact_name = models.CharField(max_length=100)
     emergency_contact_relation = models.CharField(max_length=50, blank=True)
     emergency_contact_mobile = models.CharField(max_length=15)
+    emergency_contact_verified = models.BooleanField(default=False)
     updated_at = models.DateTimeField(auto_now=True)
 
 class HelperServicePrice(models.Model):
     helper = models.ForeignKey("HelperProfile", on_delete=models.CASCADE, related_name="service_prices")
     service = models.ForeignKey("Service", on_delete=models.CASCADE, related_name="helper_prices")
     price_per_hour = models.DecimalField(max_digits=8, decimal_places=2)
+
     class Meta:
         unique_together = ("helper", "service")

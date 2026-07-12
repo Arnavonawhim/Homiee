@@ -1,20 +1,24 @@
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse, OpenApiExample, OpenApiTypes
+from django.conf import settings
 from rest_framework import generics, status
+from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import ResidentProfile, HelperProfile
+from .sos_otp import send_sos_otp, resend_sos_otp, verify_sos_otp
 from .serializers import (ResidentAddressSerializer,
-    ResidentEmergencyContactSerializer,
     ResidentPhotoSerializer,
     ResidentProfileSerializer,
+    ResidentSOSRequestSerializer,
+    HelperSOSRequestSerializer,
+    SOSVerifySerializer,
     HelperIdentitySerializer,
     HelperAddressSerializer,
     HelperDocumentsSerializer,
     HelperServicesPricingSerializer,
     HelperExperienceSerializer,
     HelperAvailabilitySerializer,
-    HelperEmergencyContactSerializer,
     HelperProfileSerializer,)
 
 _ERROR_400 = OpenApiResponse(
@@ -35,6 +39,34 @@ _ERROR_401 = OpenApiResponse(
         OpenApiExample(
             "Unauthorized",
             value={"status": "error", "message": "Authentication credentials were not provided."},
+        )
+    ],
+)
+
+_SOS_REQUEST_OK = OpenApiResponse(
+    response=OpenApiTypes.OBJECT,
+    description="OTP sent to the emergency contact number",
+    examples=[
+        OpenApiExample(
+            "Success",
+            value={"status": "success", "message": "OTP sent to the emergency contact number."},
+        )
+    ],
+)
+
+_SOS_VERIFY_OK = OpenApiResponse(
+    response=OpenApiTypes.OBJECT,
+    description="Emergency contact verified and saved",
+    examples=[
+        OpenApiExample(
+            "Success",
+            value={
+                "status": "success",
+                "message": "Emergency contact verified successfully.",
+                "emergency_contact_name": "Tulika",
+                "emergency_contact_mobile": "9876543210",
+                "emergency_contact_verified": True,
+            },
         )
     ],
 )
@@ -87,28 +119,93 @@ class ResidentAddressView(ResidentProfileStepMixin, generics.GenericAPIView):
 
 @extend_schema_view(
     post=extend_schema(
-        request=ResidentEmergencyContactSerializer,
-        responses={
-            200: OpenApiResponse(
-                response=ResidentEmergencyContactSerializer,
-                description="Emergency contact saved",
-                examples=[
-                    OpenApiExample(
-                        "Success",
-                        value={"emergency_contact_name": "Tulika", "emergency_contact_mobile": "9876543210"},
-                    )
-                ],
-            ),
-            400: _ERROR_400,
-            401: _ERROR_401,
-        },
+        request=ResidentSOSRequestSerializer,
+        responses={200: _SOS_REQUEST_OK, 400: _ERROR_400, 401: _ERROR_401},
         tags=["Resident Onboarding"],
-        summary="Resident \u2014 emergency contact (step 2)",
-        description="Sets the emergency contact name and mobile number.",
+        summary="Resident \u2014 emergency contact: request OTP (step 2a)",
+        description="Validates the emergency contact number (cannot be your own) and sends a 6-digit OTP to it. In DEBUG the OTP is returned in the response for testing.",
+        examples=[
+            OpenApiExample(
+                "Request",
+                value={"emergency_contact_name": "Tulika", "emergency_contact_mobile": "9876543210"},
+                request_only=True,
+            )
+        ],
     )
 )
-class ResidentEmergencyContactView(ResidentProfileStepMixin, generics.GenericAPIView):
-    serializer_class = ResidentEmergencyContactSerializer
+class ResidentSOSRequestOTPView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ResidentSOSRequestSerializer
+
+    def post(self, request):
+        serializer = ResidentSOSRequestSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        code = send_sos_otp(
+            request.user.id,
+            data["emergency_contact_mobile"],
+            {"emergency_contact_name": data["emergency_contact_name"]},
+        )
+        body = {"status": "success", "message": "OTP sent to the emergency contact number."}
+        if settings.DEBUG:
+            body["otp"] = code
+        return Response(body, status=status.HTTP_200_OK)
+
+@extend_schema_view(
+    post=extend_schema(
+        request=SOSVerifySerializer,
+        responses={200: _SOS_VERIFY_OK, 400: _ERROR_400, 401: _ERROR_401},
+        tags=["Resident Onboarding"],
+        summary="Resident \u2014 emergency contact: verify OTP (step 2b)",
+        description="Verifies the OTP that was sent to the emergency contact number and saves the contact on the resident profile.",
+        examples=[OpenApiExample("Request", value={"otp": "123456"}, request_only=True)],
+    )
+)
+class ResidentSOSVerifyOTPView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = SOSVerifySerializer
+
+    def post(self, request):
+        serializer = SOSVerifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        ok, message, payload = verify_sos_otp(request.user.id, serializer.validated_data["otp"])
+        if not ok:
+            return Response({"status": "error", "message": message}, status=status.HTTP_400_BAD_REQUEST)
+        profile, _ = ResidentProfile.objects.get_or_create(user=request.user)
+        profile.emergency_contact_name = payload["extra"]["emergency_contact_name"]
+        profile.emergency_contact_mobile = payload["mobile"]
+        profile.emergency_contact_verified = True
+        profile.save(update_fields=[
+            "emergency_contact_name", "emergency_contact_mobile", "emergency_contact_verified", "updated_at",
+        ])
+        return Response({
+            "status": "success",
+            "message": message,
+            "emergency_contact_name": profile.emergency_contact_name,
+            "emergency_contact_mobile": profile.emergency_contact_mobile,
+            "emergency_contact_verified": profile.emergency_contact_verified,
+        }, status=status.HTTP_200_OK)
+
+@extend_schema_view(
+    post=extend_schema(
+        request=None,
+        responses={200: _SOS_REQUEST_OK, 400: _ERROR_400, 401: _ERROR_401},
+        tags=["Resident Onboarding"],
+        summary="Resident \u2014 emergency contact: resend OTP (step 2c)",
+        description="Resends a fresh OTP to the pending emergency contact number. Subject to a cooldown between resends. In DEBUG the OTP is returned in the response.",
+    )
+)
+class ResidentSOSResendOTPView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        ok, message, code = resend_sos_otp(request.user.id)
+        if not ok:
+            return Response({"status": "error", "message": message}, status=status.HTTP_400_BAD_REQUEST)
+        body = {"status": "success", "message": message}
+        if settings.DEBUG:
+            body["otp"] = code
+        return Response(body, status=status.HTTP_200_OK)
 
 @extend_schema_view(
     post=extend_schema(
@@ -150,6 +247,7 @@ class ResidentPhotoView(ResidentProfileStepMixin, generics.GenericAPIView):
                             "longitude": "77.370000",
                             "emergency_contact_name": "Tulika",
                             "emergency_contact_mobile": "9876543210",
+                            "emergency_contact_verified": True,
                             "profile_photo": "/media/resident_photos/2026/07/photo.jpg",
                         },
                     )
@@ -276,6 +374,7 @@ class HelperAddressView(HelperProfileStepMixin, generics.GenericAPIView):
 class HelperDocumentsView(HelperProfileStepMixin, generics.GenericAPIView):
     serializer_class = HelperDocumentsSerializer
     parser_classes = [MultiPartParser, FormParser, JSONParser]
+
 @extend_schema_view(
     post=extend_schema(
         request=HelperServicesPricingSerializer,
@@ -305,6 +404,7 @@ class HelperDocumentsView(HelperProfileStepMixin, generics.GenericAPIView):
 )
 class HelperServicesPricingView(HelperProfileStepMixin, generics.GenericAPIView):
     serializer_class = HelperServicesPricingSerializer
+
 @extend_schema_view(
     post=extend_schema(
         request=HelperExperienceSerializer,
@@ -333,6 +433,7 @@ class HelperServicesPricingView(HelperProfileStepMixin, generics.GenericAPIView)
 )
 class HelperExperienceView(HelperProfileStepMixin, generics.GenericAPIView):
     serializer_class = HelperExperienceSerializer
+
 @extend_schema_view(
     post=extend_schema(
         request=HelperAvailabilitySerializer,
@@ -361,34 +462,107 @@ class HelperExperienceView(HelperProfileStepMixin, generics.GenericAPIView):
 )
 class HelperAvailabilityView(HelperProfileStepMixin, generics.GenericAPIView):
     serializer_class = HelperAvailabilitySerializer
+
 @extend_schema_view(
     post=extend_schema(
-        request=HelperEmergencyContactSerializer,
-        responses={
-            200: OpenApiResponse(
-                response=HelperEmergencyContactSerializer,
-                description="Emergency contact saved",
-                examples=[
-                    OpenApiExample(
-                        "Success",
-                        value={
-                            "emergency_contact_name": "Ramesh Kumar",
-                            "emergency_contact_relation": "Spouse",
-                            "emergency_contact_mobile": "9123456780",
-                        },
-                    )
-                ],
-            ),
-            400: _ERROR_400,
-            401: _ERROR_401,
-        },
+        request=HelperSOSRequestSerializer,
+        responses={200: _SOS_REQUEST_OK, 400: _ERROR_400, 401: _ERROR_401},
         tags=["Helper Onboarding"],
-        summary="Helper \u2014 emergency contact (step 7)",
-        description="Sets the emergency contact name, relation, and phone number.",
+        summary="Helper \u2014 emergency contact: request OTP (step 7a)",
+        description="Validates the emergency contact number (cannot be your own) and sends a 6-digit OTP to it. In DEBUG the OTP is returned in the response for testing.",
+        examples=[
+            OpenApiExample(
+                "Request",
+                value={
+                    "emergency_contact_name": "Ramesh Kumar",
+                    "emergency_contact_relation": "Spouse",
+                    "emergency_contact_mobile": "9123456780",
+                },
+                request_only=True,
+            )
+        ],
     )
 )
-class HelperEmergencyContactView(HelperProfileStepMixin, generics.GenericAPIView):
-    serializer_class = HelperEmergencyContactSerializer
+class HelperSOSRequestOTPView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = HelperSOSRequestSerializer
+
+    def post(self, request):
+        serializer = HelperSOSRequestSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        code = send_sos_otp(
+            request.user.id,
+            data["emergency_contact_mobile"],
+            {
+                "emergency_contact_name": data["emergency_contact_name"],
+                "emergency_contact_relation": data.get("emergency_contact_relation", ""),
+            },
+        )
+        body = {"status": "success", "message": "OTP sent to the emergency contact number."}
+        if settings.DEBUG:
+            body["otp"] = code
+        return Response(body, status=status.HTTP_200_OK)
+
+@extend_schema_view(
+    post=extend_schema(
+        request=SOSVerifySerializer,
+        responses={200: _SOS_VERIFY_OK, 400: _ERROR_400, 401: _ERROR_401},
+        tags=["Helper Onboarding"],
+        summary="Helper \u2014 emergency contact: verify OTP (step 7b)",
+        description="Verifies the OTP that was sent to the emergency contact number and saves the contact on the helper profile.",
+        examples=[OpenApiExample("Request", value={"otp": "123456"}, request_only=True)],
+    )
+)
+class HelperSOSVerifyOTPView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = SOSVerifySerializer
+
+    def post(self, request):
+        serializer = SOSVerifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        ok, message, payload = verify_sos_otp(request.user.id, serializer.validated_data["otp"])
+        if not ok:
+            return Response({"status": "error", "message": message}, status=status.HTTP_400_BAD_REQUEST)
+        profile, _ = HelperProfile.objects.get_or_create(user=request.user)
+        profile.emergency_contact_name = payload["extra"]["emergency_contact_name"]
+        profile.emergency_contact_relation = payload["extra"].get("emergency_contact_relation", "")
+        profile.emergency_contact_mobile = payload["mobile"]
+        profile.emergency_contact_verified = True
+        profile.save(update_fields=[
+            "emergency_contact_name", "emergency_contact_relation", "emergency_contact_mobile",
+            "emergency_contact_verified", "updated_at",
+        ])
+        return Response({
+            "status": "success",
+            "message": message,
+            "emergency_contact_name": profile.emergency_contact_name,
+            "emergency_contact_relation": profile.emergency_contact_relation,
+            "emergency_contact_mobile": profile.emergency_contact_mobile,
+            "emergency_contact_verified": profile.emergency_contact_verified,
+        }, status=status.HTTP_200_OK)
+
+@extend_schema_view(
+    post=extend_schema(
+        request=None,
+        responses={200: _SOS_REQUEST_OK, 400: _ERROR_400, 401: _ERROR_401},
+        tags=["Helper Onboarding"],
+        summary="Helper \u2014 emergency contact: resend OTP (step 7c)",
+        description="Resends a fresh OTP to the pending emergency contact number. Subject to a cooldown between resends. In DEBUG the OTP is returned in the response.",
+    )
+)
+class HelperSOSResendOTPView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        ok, message, code = resend_sos_otp(request.user.id)
+        if not ok:
+            return Response({"status": "error", "message": message}, status=status.HTTP_400_BAD_REQUEST)
+        body = {"status": "success", "message": message}
+        if settings.DEBUG:
+            body["otp"] = code
+        return Response(body, status=status.HTTP_200_OK)
+
 @extend_schema_view(
     get=extend_schema(
         request=None,
@@ -431,6 +605,7 @@ class HelperEmergencyContactView(HelperProfileStepMixin, generics.GenericAPIView
                             "emergency_contact_name": "Ramesh Kumar",
                             "emergency_contact_relation": "Spouse",
                             "emergency_contact_mobile": "9123456780",
+                            "emergency_contact_verified": True,
                         },
                     )
                 ],
