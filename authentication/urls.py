@@ -1,9 +1,10 @@
 from django.urls import path
 from authentication import views
-
+from rest_framework_simplejwt.views import TokenRefreshView
 app_name = "maideasy"
 
 urlpatterns = [
+    path('refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path("register/", views.UserRegistrationView.as_view(), name="register"),
     path("verify-otp/", views.VerifyRegistrationOTPView.as_view(), name="verify-otp"),
     path("resend-otp/", views.ResendOTPView.as_view(), name="resend-otp"),
