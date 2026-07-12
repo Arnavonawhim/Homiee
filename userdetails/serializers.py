@@ -27,10 +27,15 @@ class ResidentPhotoSerializer(serializers.ModelSerializer):
         fields = ["profile_photo"]
 
 class ResidentProfileSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(source="user.email", read_only=True)
+    fname = serializers.CharField(source="user.fname", read_only=True)
+    lname = serializers.CharField(source="user.lname", read_only=True)
+    mobile = serializers.CharField(source="user.mobile", read_only=True)
+
     class Meta:
         model = ResidentProfile
         fields = [
-            "email","fname",
+            "email", "fname", "lname", "mobile",
             "house_no", "area", "city", "pincode", "latitude", "longitude",
             "emergency_contact_name", "emergency_contact_mobile",
             "profile_photo",
@@ -61,6 +66,7 @@ class HelperServicePriceSerializer(serializers.ModelSerializer):
     class Meta:
         model = HelperServicePrice
         fields = ["service", "price_per_hour"]
+
 class HelperServicePriceReadSerializer(serializers.ModelSerializer):
     service = ServiceSerializer(read_only=True)
     class Meta:
@@ -83,11 +89,13 @@ class HelperServicesPricingSerializer(serializers.ModelSerializer):
                     price_per_hour=item["price_per_hour"],
                 )
         return instance
+
 class HelperExperienceSerializer(serializers.ModelSerializer):
     languages_spoken = serializers.PrimaryKeyRelatedField(many=True, queryset=Language.objects.all())
     class Meta:
         model = HelperProfile
         fields = ["years_of_experience", "languages_spoken", "about"]
+
 class HelperAvailabilitySerializer(serializers.ModelSerializer):
     working_days = serializers.ListField(
         child=serializers.ChoiceField(choices=HelperProfile.Day.choices)
@@ -95,19 +103,25 @@ class HelperAvailabilitySerializer(serializers.ModelSerializer):
     class Meta:
         model = HelperProfile
         fields = ["working_days", "start_time", "end_time"]
+
 class HelperEmergencyContactSerializer(serializers.ModelSerializer):
     class Meta:
         model = HelperProfile
         fields = ["emergency_contact_name", "emergency_contact_relation", "emergency_contact_mobile"]
 
 class HelperProfileSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(source="user.email", read_only=True)
+    fname = serializers.CharField(source="user.fname", read_only=True)
+    lname = serializers.CharField(source="user.lname", read_only=True)
+    mobile = serializers.CharField(source="user.mobile", read_only=True)
     service_prices = HelperServicePriceReadSerializer(many=True, read_only=True)
     languages_spoken = LanguageSerializer(many=True, read_only=True)
 
     class Meta:
         model = HelperProfile
         fields = [
-            "full_name","email", "date_of_birth", "govt_id_type", "govt_id_number",
+            "full_name", "email", "fname", "lname", "mobile",
+            "date_of_birth", "govt_id_type", "govt_id_number",
             "aadhaar_card", "pan_card",
             "house_no", "area", "city", "pincode", "latitude", "longitude",
             "profile_photo", "police_verification_cert", "address_proof",
