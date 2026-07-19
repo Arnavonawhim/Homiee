@@ -295,10 +295,9 @@ class HelperProfileStepMixin:
                             "date_of_birth": "1990-05-12",
                             "govt_id_type": "aadhaar",
                             "govt_id_number": "1234 5678 9012",
-                            "aadhaar_card": "/media/helper_docs/aadhaar/2026/07/aadhaar.jpg",
-                            "pan_card": "/media/helper_docs/pan/2026/07/pan.jpg",
-                            "adhaar_verified": "false",
-                            "pan_verified":"false",
+                            "front_card": "/media/helper_docs/front/2026/07/aadhaar.jpg",
+                            "back_card": "/media/helper_docs/back/2026/07/pan.jpg",
+                            "id_verified": "false",
                         },
                     )
                 ],
@@ -308,7 +307,7 @@ class HelperProfileStepMixin:
         },
         tags=["Helper Onboarding"],
         summary="Helper \u2014 identity verification (step 1)",
-        description="Saves the helper's name, date of birth, government ID, Aadhaar card (required) and PAN card (optional).",
+        description="Saves the helper's name, date of birth, government ID, front and back both required",
     )
 )
 class HelperIdentityView(HelperProfileStepMixin, generics.GenericAPIView):
@@ -327,7 +326,7 @@ class HelperIdentityView(HelperProfileStepMixin, generics.GenericAPIView):
                         "Success",
                         value={
                             "house_no": "7B",
-                            "area": "Vaishali",
+                            "state": "Uttar pradesh",
                             "city": "Ghaziabad",
                             "pincode": "201010",
                             "latitude": "28.650000",
@@ -360,7 +359,6 @@ class HelperAddressView(HelperProfileStepMixin, generics.GenericAPIView):
                         value={
                             "profile_photo": "/media/helper_photos/2026/07/photo.jpg",
                             "police_verification_cert": "/media/helper_docs/police/2026/07/cert.pdf",
-                            "address_proof": "/media/helper_docs/address_proof/2026/07/proof.pdf",
                         },
                     )
                 ],
@@ -580,17 +578,16 @@ class HelperSOSResendOTPView(APIView):
                             "date_of_birth": "1990-05-12",
                             "govt_id_type": "aadhaar",
                             "govt_id_number": "1234 5678 9012",
-                            "aadhaar_card": "/media/helper_docs/aadhaar/2026/07/aadhaar.jpg",
-                            "pan_card": "/media/helper_docs/pan/2026/07/pan.jpg",
+                            "front_card": "/media/helper_docs/front/2026/07/aadhaar.jpg",
+                            "back_card": "/media/helper_docs/back/2026/07/pan.jpg",
                             "house_no": "7B",
-                            "area": "Vaishali",
+                            "state": "Uttar Prdesh",
                             "city": "Ghaziabad",
                             "pincode": "201010",
                             "latitude": "28.650000",
                             "longitude": "77.340000",
                             "profile_photo": "/media/helper_photos/2026/07/photo.jpg",
                             "police_verification_cert": "/media/helper_docs/police/2026/07/cert.pdf",
-                            "address_proof": "/media/helper_docs/address_proof/2026/07/proof.pdf",
                             "service_prices": [
                                 {"service": {"id": 1, "name": "Cleaning", "slug": "cleaning"}, "price_per_hour": "200.00"},
                                 {"service": {"id": 2, "name": "Cooking", "slug": "cooking"}, "price_per_hour": "150.00"},

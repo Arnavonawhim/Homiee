@@ -70,24 +70,24 @@ class ResidentProfileSerializer(serializers.ModelSerializer):
         ]
 
 class HelperIdentitySerializer(serializers.ModelSerializer):
-    pan_card = serializers.FileField(required=False, allow_null=True)
+    back_card = serializers.FileField(required=False, allow_null=True)
 
     class Meta:
         model = HelperProfile
         fields = [
             "full_name", "date_of_birth", "govt_id_type", "govt_id_number",
-            "aadhaar_card", "pan_card","adhaar_verified","pan_verified"
+            "front_card", "back_card","id_verified"
         ]
 
 class HelperAddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = HelperProfile
-        fields = ["house_no", "area", "city", "pincode", "latitude", "longitude"]
+        fields = ["house_no", "state", "city", "pincode", "latitude", "longitude"]
 
 class HelperDocumentsSerializer(serializers.ModelSerializer):
     class Meta:
         model = HelperProfile
-        fields = ["profile_photo", "police_verification_cert", "address_proof"]
+        fields = ["profile_photo", "police_verification_cert"]
 
 class HelperServicePriceSerializer(serializers.ModelSerializer):
     service = serializers.PrimaryKeyRelatedField(queryset=Service.objects.all())
@@ -145,9 +145,9 @@ class HelperProfileSerializer(serializers.ModelSerializer):
         fields = [
             "full_name", "email", "fname", "lname", "mobile",
             "date_of_birth", "govt_id_type", "govt_id_number",
-            "aadhaar_card", "pan_card",
-            "house_no", "area", "city", "pincode", "latitude", "longitude",
-            "profile_photo", "police_verification_cert", "address_proof",
+            "front_card", "back_card",
+            "house_no", "state", "city", "pincode", "latitude", "longitude",
+            "profile_photo", "police_verification_cert",
             "service_prices",
             "years_of_experience", "languages_spoken", "about",
             "working_days", "start_time", "end_time",
