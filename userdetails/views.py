@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .models import ResidentProfile, HelperProfile
+from .models import ResidentProfile, HelperProfile, Service
 from .sos_otp import send_sos_otp, resend_sos_otp, verify_sos_otp
 from .serializers import (ResidentAddressSerializer,
     ResidentPhotoSerializer,
@@ -19,7 +19,8 @@ from .serializers import (ResidentAddressSerializer,
     HelperServicesPricingSerializer,
     HelperExperienceSerializer,
     HelperAvailabilitySerializer,
-    HelperProfileSerializer,)
+    HelperProfileSerializer,
+    ServiceSerializer,)
 
 _ERROR_400 = OpenApiResponse(
     response=OpenApiTypes.OBJECT,
@@ -622,3 +623,32 @@ class HelperProfileDetailView(generics.RetrieveAPIView):
     def get_object(self):
         profile, _ = HelperProfile.objects.get_or_create(user=self.request.user)
         return profile
+
+@extend_schema_view(
+    get=extend_schema(
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                response=ServiceSerializer(many=True),
+                description="All available services",
+                examples=[
+                    OpenApiExample(
+                        "Success",
+                        value=[
+                            {"id": 1, "name": "Cleaning", "slug": "cleaning"},
+                            {"id": 2, "name": "Cooking", "slug": "cooking"},
+                        ],
+                    )
+                ],
+            ),
+            401: _ERROR_401,
+        },
+        tags=["Helper Onboarding"],
+        summary="Services \u2014 list all",
+        description="Returns every service in the system, e.g. for populating a dropdown when a helper sets prices.",
+    )
+)
+class ServiceListView(generics.ListAPIView):
+    queryset = Service.objects.all()
+    serializer_class = ServiceSerializer
+    permission_classes = [IsAuthenticated]

@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-5#=6f$7j+x2f5=edm19me(*^%ap*_z!@bg@_@ome5ba5e$cbxa')
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
@@ -85,16 +85,15 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# --- File storage: media on AWS S3, static via WhiteNoise (Django 4.2+ STORAGES API) ---
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', '')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
 AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', '')
 AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'ap-south-1')
 AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com'
 AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
-AWS_DEFAULT_ACL = None            # bucket uses "Bucket owner enforced"; control access via bucket policy
-AWS_QUERYSTRING_AUTH = False      # serve plain public URLs (set True for private/signed URLs)
-AWS_S3_FILE_OVERWRITE = False     # don't clobber files with the same name
+AWS_DEFAULT_ACL = None            
+AWS_QUERYSTRING_AUTH = False      
+AWS_S3_FILE_OVERWRITE = False     
 
 USE_S3 = os.environ.get('USE_S3', 'False') == 'True'
 

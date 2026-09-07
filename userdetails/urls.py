@@ -18,4 +18,5 @@ urlpatterns = [
     path("helpers/emergency-contact/resend-otp/", views.HelperSOSResendOTPView.as_view(), name="helper-sos-resend-otp"),
     path("helpers/emergency-contact/verify-otp/", views.HelperSOSVerifyOTPView.as_view(), name="helper-sos-verify-otp"),
     path("helpers/profile/", views.HelperProfileDetailView.as_view(), name="helper-profile-detail"),
+    path("userdetails/services/", views.ServiceListView.as_view(), name="service-list"),
 ]
