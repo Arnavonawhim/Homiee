@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .models import ResidentProfile, HelperProfile, Service
+from .models import ResidentProfile, HelperProfile, Service, Language
 from .sos_otp import send_sos_otp, resend_sos_otp, verify_sos_otp
 from .serializers import (ResidentAddressSerializer,
     ResidentPhotoSerializer,
@@ -20,7 +20,8 @@ from .serializers import (ResidentAddressSerializer,
     HelperExperienceSerializer,
     HelperAvailabilitySerializer,
     HelperProfileSerializer,
-    ServiceSerializer,)
+    ServiceSerializer,
+    LanguageSerializer,)
 
 _ERROR_400 = OpenApiResponse(
     response=OpenApiTypes.OBJECT,
@@ -652,3 +653,33 @@ class ServiceListView(generics.ListAPIView):
     queryset = Service.objects.all()
     serializer_class = ServiceSerializer
     permission_classes = [IsAuthenticated]
+
+@extend_schema_view(
+    get=extend_schema(
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                response=LanguageSerializer(many=True),
+                description="All available languages",
+                examples=[
+                    OpenApiExample(
+                        "Success",
+                        value=[
+                            {"id": 1, "name": "Hindi", "code": "hi"},
+                            {"id": 2, "name": "English", "code": "en"},
+                        ],
+                    )
+                ],
+            ),
+            401: _ERROR_401,
+        },
+        tags=["Helper Onboarding"],
+        summary="Languages \u2014 list all",
+        description="Returns every language in the system, e.g. for populating a dropdown when a helper picks the languages they speak.",
+    )
+)
+class LanguageListView(generics.ListAPIView):
+    queryset = Language.objects.all().order_by("name")
+    serializer_class = LanguageSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
