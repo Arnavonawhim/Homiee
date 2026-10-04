@@ -45,8 +45,7 @@ class HelperCardSerializer(serializers.ModelSerializer):
 class HelperDetailSerializer(HelperCardSerializer):
     class Meta(HelperCardSerializer.Meta):
         fields = HelperCardSerializer.Meta.fields + [
-            "about", "working_days", "start_time", "end_time",
-        ]
+            "about", "working_days", "start_time", "end_time","languages",]
 
 
 class BookingCreateSerializer(serializers.Serializer):
