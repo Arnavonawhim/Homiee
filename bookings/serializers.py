@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from userdetails.models import Service, HelperProfile, HelperServicePrice
+from userdetails.models import Service, HelperProfile, HelperServicePrice, Language
 from bookings.models import Booking, Rating
 
 User = get_user_model()
@@ -45,7 +45,7 @@ class HelperCardSerializer(serializers.ModelSerializer):
 class HelperDetailSerializer(HelperCardSerializer):
     class Meta(HelperCardSerializer.Meta):
         fields = HelperCardSerializer.Meta.fields + [
-            "about", "working_days", "start_time", "end_time","languages_spoken",]
+            "about", "working_days", "start_time", "end_time","name","code"]
 
 
 class BookingCreateSerializer(serializers.Serializer):
