@@ -82,7 +82,7 @@ class HelperIdentitySerializer(serializers.ModelSerializer):
 class HelperAddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = HelperProfile
-        fields = ["house_no", "state", "city", "pincode", "latitude", "longitude"]
+        fields = ["house_no", "state","area", "city", "pincode", "latitude", "longitude"]
 
 class HelperDocumentsSerializer(serializers.ModelSerializer):
     class Meta:

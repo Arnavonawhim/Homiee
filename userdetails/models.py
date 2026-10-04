@@ -55,6 +55,7 @@ class HelperProfile(models.Model):
     back_card = models.FileField(upload_to="helper_docs/back/%Y/%m/", null=True, blank=True)
     house_no = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
+    area = models.CharField(max_length=100)
     city = models.CharField(max_length=100)
     pincode = models.CharField(max_length=10)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
