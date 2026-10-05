@@ -45,7 +45,7 @@ _HELPER_DETAIL_EXAMPLE = {
     "services": [
         {"service_id": 1, "name": "Cleaning", "slug": "cleaning", "price_per_hour": "150.00"},
     ],
-     "languages_spoken": ["Hindi", "English"],
+    "languages_spoken": [{"name": "Hindi", "code": "hi"}, {"name": "English", "code": "en"}],   
     "distance_km": None,
     "about": "Experienced house cleaner available on weekdays.",
     "working_days": ["mon", "tue", "wed", "thu", "fri"],

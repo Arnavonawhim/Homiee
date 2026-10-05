@@ -6,6 +6,11 @@ from bookings.models import Booking, Rating
 User = get_user_model()
 
 
+class LanguageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Language
+        fields = ["name", "code"]
+
 class HelperServiceInfoSerializer(serializers.ModelSerializer):
     service_id = serializers.IntegerField(source="service.id", read_only=True)
     name = serializers.CharField(source="service.name", read_only=True)
@@ -26,11 +31,9 @@ class HelperCardSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = HelperProfile
-        fields = [
-            "helper_id", "fname", "lname", "username",
-            "city", "area", "profile_photo", "years_of_experience",
-            "avg_rating", "rating_count", "services", "distance_km",
-        ]
+        fields = ["helper_id", "fname", "lname", "username",
+                  "city", "area", "profile_photo", "years_of_experience",
+                  "avg_rating", "rating_count", "services", "distance_km",]
 
     def validate(self, data):
         if data["avg_rating"]>5 or data["avg_rating"]<0:
@@ -41,11 +44,11 @@ class HelperCardSerializer(serializers.ModelSerializer):
         value = distances.get(obj.id)
         return round(value, 2) if value is not None else None
 
-
 class HelperDetailSerializer(HelperCardSerializer):
+    languages_spoken = LanguageSerializer(many=True, read_only=True)
     class Meta(HelperCardSerializer.Meta):
         fields = HelperCardSerializer.Meta.fields + [
-            "about", "working_days", "start_time", "end_time","Language.name","Language.code"]
+            "about", "working_days", "start_time", "end_time","languages_spoken", "police_verification_cert"]
 
 
 class BookingCreateSerializer(serializers.Serializer):
