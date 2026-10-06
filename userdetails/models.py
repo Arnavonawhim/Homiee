@@ -52,6 +52,7 @@ class HelperProfile(models.Model):
     govt_id_number = models.CharField(max_length=50, blank=True)
     front_card = models.FileField(upload_to="helper_docs/front/%Y/%m/", null=True, blank=True)
     id_verified = models.BooleanField(default=False)
+    police_verified = models.BooleanField(default=False)
     back_card = models.FileField(upload_to="helper_docs/back/%Y/%m/", null=True, blank=True)
     house_no = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
